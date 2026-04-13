@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rtk ls:*)",
+      "Bash(grep -E '\\\\.\\(gradle|properties|xml|kt|java\\)$')",
+      "Bash(rtk find:*)",
+      "Bash(rtk wc:*)",
+      "Bash(mkdir -p /Users/tphk2002/workspace/2026/CoroutinesAndFlows/.claude/skills/android-clean-architecture)",
+      "Bash(cp /Users/tphk2002/workspace/2026/ArtTestingapp/.cursor/skills/android-clean-architecture/SKILL.md /Users/tphk2002/workspace/2026/CoroutinesAndFlows/.claude/skills/android-clean-architecture/)",
+      "Bash(rtk read:*)",
+      "Bash(rtk grep:*)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(adb devices:*)",
+      "Bash(./gradlew installDebug)",
+      "Bash(adb shell:*)",
+      "Bash(adb logcat:*)",
+      "Bash(./gradlew :app:testDebugUnitTest)",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"com.example.coroutinesflows.viewmodel.NetworkFlowViewModelTest.loadPosts should emit Loading then Success\" --stacktrace)",
+      "Bash(./gradlew assembleDebug installDebug)"
+    ]
+  }
+}

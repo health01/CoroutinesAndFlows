@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme.
+         Uses Material3 DayNight with NoActionBar because Compose manages the full UI.
+         窗口背景設為透明讓 Compose 完全掌控繪製。 -->
+    <style name="Theme.CoroutinesAndFlows" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- The Compose theme (CoroutinesAndFlowsTheme) handles all visual styling.
+             These window attributes ensure a clean handoff from the XML theme to Compose. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
