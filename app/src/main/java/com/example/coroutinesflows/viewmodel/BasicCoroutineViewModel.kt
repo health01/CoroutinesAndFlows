@@ -44,6 +44,16 @@ import javax.inject.Inject
  *     子出現例外時，例外會向上傳播到父。確保不會有 leaked coroutine。
  *     Child coroutine lifetime is bounded by parent scope. Cancel parent = cancel all children.
  *     Exception propagates upward. No leaked coroutines.
+ *
+ * 📊 四個 demo 的關係比較：
+ * ┌─────────────────────┬──────────┬────────────┬───────────────────────┐
+ * │ Demo                │ 關係      │ 可個別取消  │ 等待？               │
+ * ├─────────────────────┼──────────┼────────────┼───────────────────────┤
+ * │ demoLaunch()        │ 兄弟      │ ✅          │ ❌ 不等待             │
+ * │ demoAsyncAwait()    │ 兄弟      │ ✅          │ ✅ awaitAll 等待      │
+ * │ demoWithContext()   │ suspend   │ ✅          │ ✅ 阻塞直到完成       │
+ * │ demoStructured()    │ 父子      │ ❌ 父帶子   │ ✅ 隱式等待所有子     │
+ * └─────────────────────┴──────────┴────────────┴───────────────────────┘
  */
 @HiltViewModel
 class BasicCoroutineViewModel @Inject constructor() : ViewModel() {
@@ -133,8 +143,27 @@ class BasicCoroutineViewModel @Inject constructor() : ViewModel() {
 
     // ── Demo 4: Structured Concurrency ────────────────────────────────────
     /**
-     * 展示父 Coroutine 會等待所有子完成才結束。
-     * Parent coroutine waits for all children before completing.
+     * 📌 與其他 demo 的關鍵差異：
+     *
+     * 【其他 demo（launch / async/await / withContext）】
+     *   • demoLaunch()：每次 viewModelScope.launch { } 是「兄弟」關係
+     *     → 取消其中一個，不影響另一個
+     *   • demoWithContext()：withContext { } 是 suspend，會阻塞當前 coroutine
+     *     → 取消會連帶取消 IO 工作
+     *
+     * 【Structured Concurrency（結構化並發）】
+     *   • 父 coroutine 內部 launch 多個子 coroutine → 是「父子」關係
+     *   • 父 coroutine 會「隱式等待」所有子完成才結束（不需要 join/awaitAll）
+     *   • 取消父 coroutine → 所有子 coroutine 同時被取消
+     *   • 任一子 coroutine 拋出例外 → 父 + 所有兄弟都被取消
+     *
+     * ⚠️ 這就是「Structured Concurrency」：子 coroutine 的生命週期被父 scope 約束，
+     *    確保不會有 leaked coroutine。其他 demo 是獨立的兄弟 coroutine，可以個別取消。
+     *
+     * Key difference:
+     *   - Other demos: sibling coroutines (independent, individually cancellable)
+     *   - This demo: parent-child hierarchy (parent implicitly waits for children,
+     *     cancellation/exception propagates to all)
      */
     fun demoStructuredConcurrency() {
         clearLogs()
@@ -142,15 +171,15 @@ class BasicCoroutineViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             log("Parent started")
             launch {
-                delay(3000)
+                delay(300)
                 log("Child 1 done (300ms)")
             }
             launch {
                 delay(500)
                 log("Child 2 done (500ms)")
             }
-            // 父 Coroutine 在這裡等待所有子完成
-            // Parent implicitly waits for both children before this line
+            // 父 Coroutine 會隱式等待所有子完成才到達這行
+            // Parent implicitly waits for both children before this line executes
             log("Parent block end (but actual completion waits for children)")
         }
         log("viewModelScope.launch returned — parent + children still running")
