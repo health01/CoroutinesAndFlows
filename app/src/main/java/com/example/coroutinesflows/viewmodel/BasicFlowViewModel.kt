@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -18,6 +17,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -50,19 +50,40 @@ import javax.inject.Inject
  *     When to use map vs flatMapLatest vs transform in Flow?
  * A3: map: 1對1轉換。
  *     flatMapLatest: 每個值會啟動新 Flow，前一個 Flow 會被取消（適合搜尋防抖）。
- *     transform: 可以 emit 任意次數（0~N），彈性最高。
+ *     transform: 可以 emit 任意次數（0~N），且支援 suspend，彈性最高。
+ *       例：對每個 userId 先 emit Loading，再 suspend 拿資料，再 emit Result —
+ *       map 做不到，因為 map 只能回傳單一值且無法在中間 emit 中間狀態。
+ *     transform: emit 0..N values per element, with suspend support.
+ *       e.g. for each userId: emit Loading → suspend fetch → emit Result.
+ *       map cannot do this — it returns exactly one value with no intermediate emits.
  */
 @HiltViewModel
 class BasicFlowViewModel @Inject constructor() : ViewModel() {
 
+    // 用 List<String> 而非 String，是為了讓 UI 能顯示完整歷史紀錄。
+    // StateFlow 靠 reference 比較來決定是否 emit：
+    //   it + msg 每次產生新的 List（新 reference）→ StateFlow emit → UI 更新。
+    // 不用 MutableList.add()，因為那會修改原本的 reference → StateFlow 不 emit → UI 不更新。
+    //
+    // Using List<String> (not String) so the UI can display the full log history.
+    // StateFlow uses reference equality to decide whether to emit:
+    //   it + msg creates a new List each time (new reference) → StateFlow emits → UI updates.
+    // MutableList.add() mutates in place (same reference) → StateFlow does NOT emit → UI stale.
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
     private fun log(msg: String) {
+//        _logs.update { currentList ->
+//            (currentList as MutableList).add(msg)  // 修改原本的 list
+//            currentList  // 回傳同一個 reference → StateFlow 不 emit
+
+        // ✅ it + msg — 產生新 List，新 reference
         _logs.update { it + msg }
     }
 
-    fun clearLogs() { _logs.value = emptyList() }
+    fun clearLogs() {
+        _logs.value = emptyList()
+    }
 
     // ── Demo 1: Cold Flow — 基本 flow builder ─────────────────────────────
     /**
@@ -117,23 +138,43 @@ class BasicFlowViewModel @Inject constructor() : ViewModel() {
 
     // ── Demo 3: transform operator ────────────────────────────────────────
     /**
-     * transform 最靈活：可以對每個值 emit 任意次（0~N）。
-     * transform is the most flexible: can emit 0..N values per upstream element.
+     * transform 最靈活：可以對每個值 emit 任意次（0~N），且可在中間執行 suspend 操作。
+     * transform is the most flexible: emit 0..N values per element, with suspend support.
+     *
+     * 實戰場景：對每個 userId，先 emit Loading，再 suspend 拿資料，再 emit Result。
+     * Real-world: for each userId, emit Loading first, then suspend-fetch, then emit Result.
+     * map 做不到這件事，因為 map 只能回傳單一值且無法在中間 emit。
+     * map cannot do this — it returns exactly one value and cannot emit intermediate states.
      */
     fun demoTransform() {
         clearLogs()
         log("=== transform operator demo ===")
         viewModelScope.launch {
-            flow { for (i in 1..3) emit(i) }
-                .transform { value ->
-                    emit("start_$value")   // emit 2 items per input
-                    emit("end_$value")
+            flow { for (id in 1..3) emit(id) }  // upstream: user IDs 1, 2, 3
+                .transform { userId ->
+                    emit("⏳ Loading user $userId...")   // emit 1: loading state
+                    delay(400)                           // simulate network call
+                    emit("✅ User $userId loaded")       // emit 2: result
                 }
                 .collect { log("  $it") }
         }
     }
 
     // ── Demo 4: Terminal Operators ────────────────────────────────────────
+    /**
+     * Terminal operator 是啟動 Flow 執行的觸發點。
+     * Flow 是 cold 的 — 在呼叫 terminal operator 之前，整個 pipeline 什麼都不會執行。
+     * Terminal operators are what actually start a Flow executing.
+     * Flow is cold — nothing runs until a terminal operator is called.
+     *
+     * Intermediate operators (map, filter, transform) 回傳 Flow<T>，不啟動執行。
+     * Terminal operators (collect, toList, first) 回傳實際值，且是 suspend function，
+     * 必須在 coroutine 內呼叫。
+     *
+     * Intermediate operators (map, filter, transform) return Flow<T> — no execution yet.
+     * Terminal operators (collect, toList, first) return a real value and are suspend functions
+     * — must be called inside a coroutine.
+     */
     fun demoTerminalOperators() {
         clearLogs()
         log("=== Terminal Operators demo ===")
