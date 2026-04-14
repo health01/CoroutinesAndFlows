@@ -10,6 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,7 +62,7 @@ class ParallelCallsViewModel @Inject constructor(
     val timingLogs: StateFlow<List<String>> = _timingLogs.asStateFlow()
 
     private fun logTiming(msg: String) {
-        _timingLogs.value = _timingLogs.value + msg
+        _timingLogs.update { it + msg }
     }
 
     // ── Parallel fetch using UseCase (async/await internally) ────────────

@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -51,7 +52,7 @@ class BasicCoroutineViewModel @Inject constructor() : ViewModel() {
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
     private fun log(msg: String) {
-        _logs.value = _logs.value + "[${System.currentTimeMillis() % 10000}ms] $msg"
+        _logs.update { it + "[${System.currentTimeMillis() % 10000}ms] $msg" }
     }
 
     fun clearLogs() { _logs.value = emptyList() }
@@ -141,7 +142,7 @@ class BasicCoroutineViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             log("Parent started")
             launch {
-                delay(300)
+                delay(3000)
                 log("Child 1 done (300ms)")
             }
             launch {

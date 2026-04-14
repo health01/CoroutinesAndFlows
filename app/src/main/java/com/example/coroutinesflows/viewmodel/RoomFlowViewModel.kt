@@ -102,8 +102,10 @@ class RoomFlowViewModel @Inject constructor(
                 addNoteUseCase(title, content)
                 _titleInput.value = ""
                 _contentInput.value = ""
-            }.onFailure {
-                // Error handling — in production, emit to a _errorEvent SharedFlow
+            }.onFailure { e ->
+                // In production, emit to a _errorEvent SharedFlow for UI display.
+                // For now, log the error so developers can see it during debugging.
+                android.util.Log.e("RoomFlowViewModel", "Failed to add note: ${e.message}", e)
             }
         }
     }

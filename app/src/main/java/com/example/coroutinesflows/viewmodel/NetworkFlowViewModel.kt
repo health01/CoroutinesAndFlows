@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -62,19 +63,20 @@ class NetworkFlowViewModel @Inject constructor(
         viewModelScope.launch {
             getPostsUseCase()
                 .onStart {
-                    _uiState.value = PostsUiState.Loading
+                    _uiState.update { PostsUiState.Loading }
                 }
                 .catch { throwable ->
-                    _uiState.value = PostsUiState.Error(
-                        message = throwable.message ?: "Network error",
-                        throwable = throwable
-                    )
+                    _uiState.update {
+                        PostsUiState.Error(
+                            message = throwable.message ?: "Network error",
+                            throwable = throwable
+                        )
+                    }
                 }
                 .collect { posts ->
-                    _uiState.value = if (posts.isEmpty()) {
-                        PostsUiState.Empty
-                    } else {
-                        PostsUiState.Success(posts)
+                    _uiState.update {
+                        if (posts.isEmpty()) PostsUiState.Empty
+                        else PostsUiState.Success(posts)
                     }
                 }
         }

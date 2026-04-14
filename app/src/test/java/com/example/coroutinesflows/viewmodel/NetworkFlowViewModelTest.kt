@@ -5,6 +5,7 @@ import com.example.coroutinesflows.domain.model.Post
 import com.example.coroutinesflows.domain.usecase.post.GetPostsUseCase
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
@@ -148,5 +149,8 @@ class NetworkFlowViewModelTest {
 
             cancelAndIgnoreRemainingEvents()
         }
+
+        // Verify the use case was actually called twice (initial + retry)
+        verify(exactly = 2) { mockGetPostsUseCase() }
     }
 }

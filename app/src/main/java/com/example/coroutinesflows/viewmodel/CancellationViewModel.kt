@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -56,7 +57,7 @@ class CancellationViewModel @Inject constructor() : ViewModel() {
     private var longRunningJob: Job? = null
 
     private fun log(msg: String) {
-        _logs.value = _logs.value + "[${System.currentTimeMillis() % 10000}ms] $msg"
+        _logs.update { it + "[${System.currentTimeMillis() % 10000}ms] $msg" }
     }
 
     fun clearLogs() { _logs.value = emptyList() }
@@ -123,6 +124,11 @@ class CancellationViewModel @Inject constructor() : ViewModel() {
     /**
      * CoroutineExceptionHandler 只對用 launch 啟動的 root coroutine 有效。
      * CoroutineExceptionHandler only works for root coroutines started with launch.
+     *
+     * ⚠️ 注意：此範例中子 coroutine 的例外會直接取消父 coroutine（因為沒有用 SupervisorJob），
+     *    展示的是例外如何透過 structured concurrency 向上传播。
+     * ⚠️ Note: The child's exception cancels the parent (no SupervisorJob), demonstrating
+     *    how exceptions propagate upward through structured concurrency.
      */
     fun demoExceptionHandler() {
         clearLogs()

@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -104,13 +105,15 @@ class BasicCoroutineViewModelTest {
             assertTrue(initial.isEmpty())
 
             viewModel.demoLaunch()
-            // advanceUntilIdle 推進虛擬時鐘到所有 coroutine 完成
-            // advanceUntilIdle advances virtual clock until all coroutines finish
-            advanceTimeBy(100)
+            // Let all coroutines finish (500ms delay + buffer)
+            advanceUntilIdle()
 
             val firstLogs = awaitItem()
             assertTrue(firstLogs.isNotEmpty())
-            assertTrue(firstLogs.any { it.contains("launch demo") })
+            assertTrue(firstLogs.any { it.contains("launch") })
+            // Verify both coroutines completed
+            assertTrue(firstLogs.any { it.contains("Coroutine A done") })
+            assertTrue(firstLogs.any { it.contains("Coroutine B done") })
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -120,9 +123,38 @@ class BasicCoroutineViewModelTest {
     @Test
     fun `demoAsyncAwait should log parallel completion`() = runTest(testDispatcher) {
         viewModel.demoAsyncAwait()
-        advanceTimeBy(2000)
+        advanceUntilIdle()
 
         val logs = viewModel.logs.value
         assertTrue("Should log async start", logs.any { it.contains("async/await") })
+        // Verify both parallel tasks completed
+        assertTrue("Should contain Result A", logs.any { it.contains("Result A") })
+        assertTrue("Should contain Result B", logs.any { it.contains("Result B") })
+        assertTrue("Should log completion time", logs.any { it.contains("Both done in") })
+    }
+
+    // ── Test 5: withContext switches dispatcher ───────────────────────────
+    @Test
+    fun `demoWithContext should log dispatcher switch and result`() = runTest(testDispatcher) {
+        viewModel.demoWithContext()
+        advanceUntilIdle()
+
+        val logs = viewModel.logs.value
+        assertTrue("Should log withContext start", logs.any { it.contains("withContext demo") })
+        assertTrue("Should log IO dispatcher switch", logs.any { it.contains("IO") })
+        assertTrue("Should log received data", logs.any { it.contains("Data from IO") })
+    }
+
+    // ── Test 6: Structured concurrency waits for children ─────────────────
+    @Test
+    fun `demoStructuredConcurrency should wait for all children`() = runTest(testDispatcher) {
+        viewModel.demoStructuredConcurrency()
+        advanceUntilIdle()
+
+        val logs = viewModel.logs.value
+        assertTrue("Should log parent start", logs.any { it.contains("Structured Concurrency") })
+        // Both children should complete
+        assertTrue("Should log Child 1 done", logs.any { it.contains("Child 1 done") })
+        assertTrue("Should log Child 2 done", logs.any { it.contains("Child 2 done") })
     }
 }

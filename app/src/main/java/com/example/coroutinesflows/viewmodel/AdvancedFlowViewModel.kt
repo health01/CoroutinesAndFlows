@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
@@ -64,7 +65,7 @@ class AdvancedFlowViewModel @Inject constructor() : ViewModel() {
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
-    private fun log(msg: String) { _logs.value = _logs.value + msg }
+    private fun log(msg: String) { _logs.update { it + msg } }
     fun clearLogs() { _logs.value = emptyList() }
 
     // ── 1. debounce — 搜尋防抖 ───────────────────────────────────────────

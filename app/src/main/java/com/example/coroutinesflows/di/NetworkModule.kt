@@ -1,6 +1,7 @@
 package com.example.coroutinesflows.di
 
 import com.example.coroutinesflows.data.remote.ApiService
+import com.example.coroutinesflows.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +27,8 @@ object NetworkModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // Only log request/response bodies in debug builds to avoid leaking sensitive data
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
         }
 
     @Provides

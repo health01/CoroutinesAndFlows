@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -58,7 +59,7 @@ class BasicFlowViewModel @Inject constructor() : ViewModel() {
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
     private fun log(msg: String) {
-        _logs.value = _logs.value + msg
+        _logs.update { it + msg }
     }
 
     fun clearLogs() { _logs.value = emptyList() }

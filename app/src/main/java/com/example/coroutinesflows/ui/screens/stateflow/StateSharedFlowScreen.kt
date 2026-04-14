@@ -50,8 +50,11 @@ fun StateSharedFlowScreen(
      *
      * collectLatest：如果前一個事件還在處理，新事件來時取消前者。
      * 適合 Snackbar：確保快速連續點擊時只顯示最新訊息。
+     *
+     * LaunchedEffect(viewModel) 確保當 ViewModel 實例變化時重新訂閱
+     * （雖然在這個 app 中不會發生，但這是更安全的模式）。
      */
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> {
