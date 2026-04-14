@@ -91,6 +91,19 @@ class CancellationViewModel @Inject constructor() : ViewModel() {
     /**
      * 使用 supervisorScope：子 Coroutine 失敗不影響兄弟。
      * supervisorScope: one child's failure doesn't cancel siblings.
+     *
+     * 📌 注意：viewModelScope 的型別是 CoroutineScope（介面），
+     *    但實作內部使用 SupervisorJob() + Dispatchers.Main.immediate。
+     *    因此多個 viewModelScope.launch {} 之間彼此獨立，一個失敗不影響其他。
+     *    但同一個 launch {} 內部的子 coroutine 預設是普通 Job 語意 —
+     *    需明確使用 supervisorScope {} 才能隔離子例外。
+     *
+     * Note: viewModelScope is typed as CoroutineScope (interface), but its
+     *    implementation wraps SupervisorJob() + Dispatchers.Main.immediate.
+     *    So multiple viewModelScope.launch {} blocks are independent — one
+     *    failing doesn't cancel others. However, child coroutines launched
+     *    inside a single launch {} block follow regular Job semantics by
+     *    default; use supervisorScope {} explicitly to isolate child failures.
      */
     fun demoSupervisorJob() {
         clearLogs()
@@ -98,7 +111,12 @@ class CancellationViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             supervisorScope {
                 // Child 1 會失敗 / Child 1 will fail
-                val child1 = launch {
+                // CoroutineExceptionHandler 在 supervisorScope 內的子 coroutine 上有效
+                // CoroutineExceptionHandler works on child coroutines inside supervisorScope
+                val child1Handler = CoroutineExceptionHandler { _, e ->
+                    log("❌ Caught Child 1 exception: ${e.message}")
+                }
+                val child1 = launch(child1Handler) {
                     delay(200)
                     log("Child 1: about to throw!")
                     throw IllegalStateException("Child 1 failed!")
@@ -110,10 +128,9 @@ class CancellationViewModel @Inject constructor() : ViewModel() {
                     log("✅ Child 2: completed successfully despite Child 1 failing!")
                 }
 
-                // 捕捉 Child 1 的例外 / Catch Child 1's exception
-                runCatching { child1.join() }
-                    .onFailure { log("❌ Caught Child 1 exception: ${it.message}") }
-
+                // join() 在 supervisorScope 內不會重新拋出子例外，直接等待即可
+                // join() does not rethrow child exceptions inside supervisorScope
+                child1.join()
                 child2.join()
                 log("supervisorScope completed")
             }
